@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace InvoiceSchedulerJob.Models.DBModels;
@@ -17,7 +17,7 @@ public partial class InvoicePayment
     /// <summary>
     /// сумма оплаты
     /// </summary>
-    public string? PaymentSumm { get; set; }
+    public decimal? PaymentSumm { get; set; }
 
     /// <summary>
     /// paid - уже оплатил
@@ -35,5 +35,6 @@ public partial class InvoicePayment
     public string? PeriodValue { get; set; }
 
     public virtual Invoice? InvoiceNavigation { get; set; }
-}
 
+    public virtual ICollection<Transaction> Transactions { get; } = new List<Transaction>();
+}

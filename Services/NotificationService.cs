@@ -45,7 +45,7 @@ namespace InvoiceSchedulerJob.Services
 <p>PayCode: <strong>{invoice.PayCode}</strong></p>
 ";
 
-            await CreateNotificationsForClientAsync(client, subject, message);
+            await CreateNotificationsForClientAsync(client, invoice, subject, message);
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace InvoiceSchedulerJob.Services
 <p>PayCode: <strong>{invoice.PayCode}</strong></p>
 ";
 
-            await CreateNotificationsForClientAsync(client, subject, message);
+            await CreateNotificationsForClientAsync(client, invoice, subject, message);
         }
 
         /// <summary>
@@ -101,15 +101,16 @@ namespace InvoiceSchedulerJob.Services
 <p>Спасибо за использование наших услуг!</p>
 ";
 
-            await CreateNotificationsForClientAsync(client, subject, message);
+            await CreateNotificationsForClientAsync(client, invoice, subject, message);
         }
 
         /// <summary>
         /// Создаёт уведомления для клиента через все доступные каналы
         /// </summary>
         private async Task CreateNotificationsForClientAsync(
-            OrganizationClient client, 
-            string subject, 
+            OrganizationClient client,
+            Invoice? invoice,
+            string subject,
             string message)
         {
             var notifications = new List<Notification>();
@@ -130,15 +131,15 @@ namespace InvoiceSchedulerJob.Services
                 });
             }
 
-            // Telegram (если телефон начинается с @)
-            if (!string.IsNullOrWhiteSpace(client.ClientPhone) && client.ClientPhone.StartsWith("@"))
+            // Telegram (поле client_tg)
+            if (!string.IsNullOrWhiteSpace(client.ClientTg))
             {
                 notifications.Add(new Notification
                 {
                     Id = Guid.NewGuid().ToString(),
                     ClientId = client.Id,
                     Channel = "telegram",
-                    ContactInfo = client.ClientPhone,
+                    ContactInfo = client.ClientTg,
                     Subject = subject,
                     Message = message,
                     Status = "new",
@@ -146,15 +147,15 @@ namespace InvoiceSchedulerJob.Services
                 });
             }
 
-            // WhatsApp (если телефон начинается с +)
-            if (!string.IsNullOrWhiteSpace(client.ClientPhone) && client.ClientPhone.StartsWith("+"))
+            // WhatsApp (поле client_wa)
+            if (!string.IsNullOrWhiteSpace(client.ClientWa))
             {
                 notifications.Add(new Notification
                 {
                     Id = Guid.NewGuid().ToString(),
                     ClientId = client.Id,
                     Channel = "whatsapp",
-                    ContactInfo = client.ClientPhone,
+                    ContactInfo = client.ClientWa,
                     Subject = subject,
                     Message = message,
                     Status = "new",
@@ -167,10 +168,14 @@ namespace InvoiceSchedulerJob.Services
                 _db.Notifications.AddRange(notifications);
                 await _db.SaveChangesAsync();
 
+                var invoiceInfo = invoice != null
+                    ? $" по счёту {invoice.Id} ({invoice.NameInvoice ?? "—"})"
+                    : "";
                 _logger.LogInformation(
-                    "Создано {Count} уведомлений для клиента {ClientId}",
+                    "Создано {Count} уведомлений для клиента {ClientId}{InvoiceInfo}",
                     notifications.Count,
-                    client.Id);
+                    client.Id,
+                    invoiceInfo);
             }
             else
             {

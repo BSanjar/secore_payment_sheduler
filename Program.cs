@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -40,14 +40,29 @@ namespace InvoiceSchedulerJob
             builder.Services.AddScoped<NotificationService>();
             builder.Services.AddScoped<InvoicePaymentService>();
 
-            // Регистрация фонового сервиса
-            builder.Services.AddHostedService<InvoiceSchedulerService>();
+            var isTestRun = args.Contains("--test", StringComparer.OrdinalIgnoreCase) ||
+                           args.Contains("--run-once", StringComparer.OrdinalIgnoreCase);
+
+            if (!isTestRun)
+            {
+                builder.Services.AddHostedService<InvoiceSchedulerService>();
+            }
 
             var host = builder.Build();
 
             var logger = host.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation("InvoiceSchedulerJob запущен");
 
+            if (isTestRun)
+            {
+                logger.LogInformation("Режим теста: выполняется однократная обработка платежей...");
+                using var scope = host.Services.CreateScope();
+                var paymentService = scope.ServiceProvider.GetRequiredService<InvoicePaymentService>();
+                await paymentService.ProcessScheduledPaymentsAsync();
+                logger.LogInformation("Тестовый запуск завершён.");
+                return;
+            }
+
+            logger.LogInformation("InvoiceSchedulerJob запущен");
             await host.RunAsync();
         }
     }

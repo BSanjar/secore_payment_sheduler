@@ -47,7 +47,7 @@ public partial class Invoice
     public string? Client { get; set; }
 
     /// <summary>
-    /// фиксированная сумма платежа, если не указан или 0 то сумма для платежа любая сумма
+    /// Фиксированная сумма платежа в тыйынах; если не указан или 0 — сумма для платежа любая.
     /// </summary>
     public decimal? FixedSumm { get; set; }
 
@@ -68,10 +68,15 @@ public partial class Invoice
     /// </summary>
     public bool Hassameaccount { get; set; }
 
+    public DateTime? DateEndInvoice { get; set; }
+
     public virtual OrganizationClient? ClientNavigation { get; set; }
 
-    public virtual ICollection<InvoicePayment> InvoicePayments { get; set; } = new List<InvoicePayment>();
+    public virtual ICollection<InvoicePayment> InvoicePayments { get; } = new List<InvoicePayment>();
 
-    public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public virtual ICollection<InvoiceService> InvoiceServices { get; } = new List<InvoiceService>();
+
+    public virtual ICollection<Transaction> Transactions { get; } = new List<Transaction>();
+
+    public virtual User? UserCreaterNavigation { get; set; }
 }
-
