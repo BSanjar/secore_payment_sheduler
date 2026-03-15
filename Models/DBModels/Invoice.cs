@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace InvoiceSchedulerJob.Models.DBModels;
@@ -47,7 +47,7 @@ public partial class Invoice
     public string? Client { get; set; }
 
     /// <summary>
-    /// Фиксированная сумма платежа в тыйынах; если не указан или 0 — сумма для платежа любая.
+    /// фиксированная сумма платежа, если не указан или 0 то сумма для платежа любая сумма
     /// </summary>
     public decimal? FixedSumm { get; set; }
 

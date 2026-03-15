@@ -47,6 +47,10 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<OrganizationSetting> OrganizationSettings { get; set; }
 
+    public virtual DbSet<OrganizationSubscription> OrganizationSubscriptions { get; set; }
+
+    public virtual DbSet<OrganizationSubscriptionPayment> OrganizationSubscriptionPayments { get; set; }
+
     public virtual DbSet<Permission> Permissions { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
@@ -343,12 +347,24 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasColumnType("character varying")
                 .HasColumnName("id");
+            entity.Property(e => e.NotificationType)
+                .HasColumnType("character varying")
+                .HasColumnName("notification_type");
             entity.Property(e => e.Channel)
                 .HasColumnType("character varying")
                 .HasColumnName("channel");
             entity.Property(e => e.ClientId)
                 .HasColumnType("character varying")
                 .HasColumnName("client_id");
+            entity.Property(e => e.InvoiceId)
+                .HasColumnType("character varying")
+                .HasColumnName("invoice_id");
+            entity.Property(e => e.InvoicePaymentId)
+                .HasColumnType("character varying")
+                .HasColumnName("invoice_payment_id");
+            entity.Property(e => e.OrganizationId)
+                .HasColumnType("character varying")
+                .HasColumnName("organization_id");
             entity.Property(e => e.ContactInfo)
                 .HasColumnType("character varying")
                 .HasColumnName("contact_info");
@@ -371,6 +387,15 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Subject)
                 .HasColumnType("character varying")
                 .HasColumnName("subject");
+
+            entity.HasIndex(e => new { e.NotificationType, e.InvoicePaymentId, e.Channel })
+                .HasFilter("invoice_payment_id IS NOT NULL")
+                .IsUnique()
+                .HasDatabaseName("ix_notifications_type_payment_channel_uq");
+            entity.HasIndex(e => new { e.NotificationType, e.OrganizationId, e.Channel })
+                .HasFilter("organization_id IS NOT NULL")
+                .IsUnique()
+                .HasDatabaseName("ix_notifications_type_org_channel_uq");
 
             entity.HasOne(d => d.Client).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.ClientId)
@@ -423,6 +448,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasColumnType("character varying")
                 .HasColumnName("id");
+            entity.Property(e => e.IsActive)
+                .IsRequired()
+                .HasDefaultValueSql("true")
+                .HasComment("false — доступ заблокирован (истёк период подписки)")
+                .HasColumnName("is_active");
             entity.Property(e => e.Name)
                 .HasColumnType("character varying")
                 .HasColumnName("name");
@@ -651,6 +681,67 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Organization).WithOne(p => p.OrganizationSetting)
                 .HasForeignKey<OrganizationSetting>(d => d.OrganizationId)
                 .HasConstraintName("organization_settings_organization_fk");
+        });
+
+        modelBuilder.Entity<OrganizationSubscription>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("organization_subscription_pkey");
+
+            entity.ToTable("organization_subscription");
+
+            entity.HasIndex(e => e.OrganizationId, "organization_subscription_organization_id_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasColumnType("character varying")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId)
+                .HasColumnType("character varying")
+                .HasColumnName("organization_id");
+            entity.Property(e => e.PeriodType)
+                .HasDefaultValueSql("'month'::character varying")
+                .HasColumnType("character varying")
+                .HasColumnName("period_type");
+            entity.Property(e => e.PriceTyiyn)
+                .HasPrecision(18, 2)
+                .HasColumnName("price_tyiyn");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Organization).WithOne(p => p.OrganizationSubscription)
+                .HasForeignKey<OrganizationSubscription>(d => d.OrganizationId)
+                .HasConstraintName("organization_subscription_organization_id_fkey");
+        });
+
+        modelBuilder.Entity<OrganizationSubscriptionPayment>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("organization_subscription_payment_pkey");
+
+            entity.ToTable("organization_subscription_payment");
+
+            entity.HasIndex(e => e.OrganizationId, "ix_organization_subscription_payment_organization_id");
+
+            entity.HasIndex(e => new { e.OrganizationId, e.PeriodStart, e.PeriodEnd }, "ix_organization_subscription_payment_period");
+
+            entity.Property(e => e.Id)
+                .HasColumnType("character varying")
+                .HasColumnName("id");
+            entity.Property(e => e.AmountTyiyn)
+                .HasPrecision(18, 2)
+                .HasColumnName("amount_tyiyn");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.Note)
+                .HasColumnType("character varying")
+                .HasColumnName("note");
+            entity.Property(e => e.OrganizationId)
+                .HasColumnType("character varying")
+                .HasColumnName("organization_id");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.PeriodEnd).HasColumnName("period_end");
+            entity.Property(e => e.PeriodStart).HasColumnName("period_start");
+
+            entity.HasOne(d => d.Organization).WithMany(p => p.OrganizationSubscriptionPayments)
+                .HasForeignKey(d => d.OrganizationId)
+                .HasConstraintName("organization_subscription_payment_organization_id_fkey");
         });
 
         modelBuilder.Entity<Permission>(entity =>
