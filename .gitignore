@@ -1,1 +1,11 @@
 .vs/
+.vscode/
+
+**/bin/
+**/obj/
+**/TestResults/
+
+*.user
+*.suo
+*.cache
+*.log
