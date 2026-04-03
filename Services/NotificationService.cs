@@ -108,17 +108,33 @@ public class NotificationService
         string message,
         CancellationToken ct = default)
     {
-        if (await ExistsDuplicateForOrganizationAsync(notificationType, organization.Id, NotificationChannel.Email, ct))
+        // По умолчанию уведомления о подписке отправляем в WhatsApp на номер организации.
+        // Если WhatsappPhone пустой — отправляем в email организации (OrganizationSetting.Email).
+        var orgSetting = await _db.OrganizationSettings
+            .FirstOrDefaultAsync(os => os.OrganizationId == organization.Id, ct);
+
+        if (orgSetting == null) return;
+
+        var channel = NotificationChannel.WhatsApp;
+        var contact = orgSetting.WhatsappPhone;
+
+        if (string.IsNullOrWhiteSpace(contact))
+        {
+            channel = NotificationChannel.Email;
+            contact = orgSetting.Email;
+        }
+
+        if (string.IsNullOrWhiteSpace(contact)) return;
+
+        if (await ExistsDuplicateForOrganizationAsync(notificationType, organization.Id, channel, ct))
             return;
-        var email = await _db.Users
-            .Where(u => u.Organization == organization.Id && (u.Isdeleted == null || u.Isdeleted == 0) && !string.IsNullOrWhiteSpace(u.Email))
-            .Select(u => u.Email)
-            .FirstOrDefaultAsync(ct);
-        if (string.IsNullOrWhiteSpace(email)) return;
-        var n = BuildNotification(notificationType, null, null, null, organization.Id, NotificationChannel.Email, email, subject, message);
+
+        var n = BuildNotification(notificationType, null, null, null, organization.Id, channel, contact, subject, message);
         _db.Notifications.Add(n);
         await _db.SaveChangesAsync(ct);
-        _logger.LogInformation("Создано уведомление типа {Type} для организации {OrganizationId}", notificationType, organization.Id);
+        _logger.LogInformation(
+            "Создано уведомление типа {Type} для организации {OrganizationId} через канал {Channel}",
+            notificationType, organization.Id, channel);
     }
 
     public async Task TryCreateInsufficientBalanceAsync(OrganizationClient client, Invoice invoice, InvoicePayment payment, decimal requiredAmount, decimal currentBalance, CancellationToken ct = default)

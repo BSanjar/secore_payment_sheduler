@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,10 +6,6 @@ namespace InvoiceSchedulerJob.Models.DBModels;
 
 public partial class AppDbContext : DbContext
 {
-    public AppDbContext()
-    {
-    }
-
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
@@ -74,6 +70,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasColumnType("character varying")
                 .HasColumnName("id");
+            entity.Property(e => e.Allowlistip)
+                .HasColumnType("character varying")
+                .HasColumnName("allowlistip");
             entity.Property(e => e.ApiLogin)
                 .HasColumnType("character varying")
                 .HasColumnName("api_login");
@@ -344,27 +343,23 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("notifications");
 
+            entity.HasIndex(e => new { e.NotificationType, e.OrganizationId, e.Channel }, "ix_notifications_type_org_channel_uq")
+                .IsUnique()
+                .HasFilter("(organization_id IS NOT NULL)");
+
+            entity.HasIndex(e => new { e.NotificationType, e.InvoicePaymentId, e.Channel }, "ix_notifications_type_payment_channel_uq")
+                .IsUnique()
+                .HasFilter("(invoice_payment_id IS NOT NULL)");
+
             entity.Property(e => e.Id)
                 .HasColumnType("character varying")
                 .HasColumnName("id");
-            entity.Property(e => e.NotificationType)
-                .HasColumnType("character varying")
-                .HasColumnName("notification_type");
             entity.Property(e => e.Channel)
                 .HasColumnType("character varying")
                 .HasColumnName("channel");
             entity.Property(e => e.ClientId)
                 .HasColumnType("character varying")
                 .HasColumnName("client_id");
-            entity.Property(e => e.InvoiceId)
-                .HasColumnType("character varying")
-                .HasColumnName("invoice_id");
-            entity.Property(e => e.InvoicePaymentId)
-                .HasColumnType("character varying")
-                .HasColumnName("invoice_payment_id");
-            entity.Property(e => e.OrganizationId)
-                .HasColumnType("character varying")
-                .HasColumnName("organization_id");
             entity.Property(e => e.ContactInfo)
                 .HasColumnType("character varying")
                 .HasColumnName("contact_info");
@@ -372,8 +367,20 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.InvoiceId)
+                .HasColumnType("character varying")
+                .HasColumnName("invoice_id");
+            entity.Property(e => e.InvoicePaymentId)
+                .HasColumnType("character varying")
+                .HasColumnName("invoice_payment_id");
             entity.Property(e => e.Message).HasColumnName("message");
             entity.Property(e => e.Metadata).HasColumnName("metadata");
+            entity.Property(e => e.NotificationType)
+                .HasColumnType("character varying")
+                .HasColumnName("notification_type");
+            entity.Property(e => e.OrganizationId)
+                .HasColumnType("character varying")
+                .HasColumnName("organization_id");
             entity.Property(e => e.ProcessedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("processed_at");
@@ -387,15 +394,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Subject)
                 .HasColumnType("character varying")
                 .HasColumnName("subject");
-
-            entity.HasIndex(e => new { e.NotificationType, e.InvoicePaymentId, e.Channel })
-                .HasFilter("invoice_payment_id IS NOT NULL")
-                .IsUnique()
-                .HasDatabaseName("ix_notifications_type_payment_channel_uq");
-            entity.HasIndex(e => new { e.NotificationType, e.OrganizationId, e.Channel })
-                .HasFilter("organization_id IS NOT NULL")
-                .IsUnique()
-                .HasDatabaseName("ix_notifications_type_org_channel_uq");
 
             entity.HasOne(d => d.Client).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.ClientId)
@@ -651,6 +649,9 @@ public partial class AppDbContext : DbContext
                 .HasComment("PK и FK на organization.id")
                 .HasColumnType("character varying")
                 .HasColumnName("organization_id");
+            entity.Property(e => e.Address)
+                .HasColumnType("character varying")
+                .HasColumnName("address");
             entity.Property(e => e.AllowedHassameaccount)
                 .HasComment("если true - организации могут создавать счета с одинаковыми л/с")
                 .HasColumnName("allowed_hassameaccount");
@@ -662,9 +663,25 @@ public partial class AppDbContext : DbContext
                 .HasComment("FK на commission.id для нижней от организации")
                 .HasColumnType("character varying")
                 .HasColumnName("commission_id");
+            entity.Property(e => e.ContactPhone)
+                .HasColumnType("character varying")
+                .HasColumnName("contact_phone");
+            entity.Property(e => e.DirectorFullName)
+                .HasColumnType("character varying")
+                .HasColumnName("director_full_name");
             entity.Property(e => e.DisableInvoiceServiceSelection)
                 .HasComment("отключить выбор услуги при создании счёта; ввод названия и цены вручную")
                 .HasColumnName("disable_invoice_service_selection");
+            entity.Property(e => e.Email)
+                .HasColumnType("character varying")
+                .HasColumnName("email");
+            entity.Property(e => e.InvoicePayCodeMode)
+                .HasMaxLength(32)
+                .HasComment("new_only = только новый л/с; duplicate_only = только существующий; both = новый и существующий")
+                .HasColumnName("invoice_pay_code_mode");
+            entity.Property(e => e.LogoPath)
+                .HasColumnType("character varying")
+                .HasColumnName("logo_path");
             entity.Property(e => e.Paymentreminderdaysbefore)
                 .HasComment("за сколько дней до срока начинать напоминания по оплате")
                 .HasColumnName("paymentreminderdaysbefore");
@@ -677,6 +694,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UseUpperCommissionFromAgent)
                 .HasComment("верхняя комиссия от агента")
                 .HasColumnName("use_upper_commission_from_agent");
+            entity.Property(e => e.WhatsappPhone)
+                .HasColumnType("character varying")
+                .HasColumnName("whatsapp_phone");
 
             entity.HasOne(d => d.Organization).WithOne(p => p.OrganizationSetting)
                 .HasForeignKey<OrganizationSetting>(d => d.OrganizationId)
