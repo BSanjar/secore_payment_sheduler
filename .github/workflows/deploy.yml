@@ -92,16 +92,38 @@ jobs:
             echo "⬇️ Pulling latest image: $IMAGE_TAG"
             docker pull "$IMAGE_TAG"
 
+            # /secore is at filesystem root — deploy user needs sudo once
+            if [ ! -d /secore/sheduler ]; then
+              if command -v sudo >/dev/null 2>&1; then
+                sudo mkdir -p /secore/mainSystem /secore/notificator /secore/sheduler
+                sudo chmod 777 /secore /secore/mainSystem /secore/notificator /secore/sheduler
+              else
+                echo "❌ Cannot create /secore (no sudo). Create once on server:"
+                echo "   sudo mkdir -p /secore/mainSystem /secore/notificator /secore/sheduler && sudo chmod -R 777 /secore"
+                exit 1
+              fi
+            else
+              if command -v sudo >/dev/null 2>&1; then
+                sudo mkdir -p /secore/mainSystem /secore/notificator /secore/sheduler
+                sudo chmod 777 /secore/mainSystem /secore/notificator /secore/sheduler 2>/dev/null || true
+              fi
+            fi
+
             echo "🧩 Starting $CONTAINER on network $NETWORK..."
             docker run -d \
               --name "$CONTAINER" \
               --restart always \
               --network "$NETWORK" \
               -p "$PORT:80" \
+              -v /secore/sheduler:/secore/sheduler \
               -e ASPNETCORE_ENVIRONMENT="$ENVIRONMENT" \
               -e ASPNETCORE_URLS=http://+:80 \
               -e "ConnectionStrings__DefaultConnection=$DB_CONNECTION_STRING" \
+              -e SecoreLogging__RootPath=/secore/sheduler \
+              -e SecoreLogging__FilePrefix=sheduler \
               "$IMAGE_TAG"
 
             echo "✅ Deployment finished."
             docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Networks}}"
+            echo "📝 Logs volume: /secore/sheduler"
+            ls -la /secore/sheduler || sudo ls -la /secore/sheduler || true

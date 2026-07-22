@@ -65,6 +65,10 @@
               "target": "Package",
               "version": "[7.0.0, )"
             },
+            "Microsoft.Extensions.Configuration.Binder": {
+              "target": "Package",
+              "version": "[7.0.0, )"
+            },
             "Microsoft.Extensions.Configuration.Json": {
               "target": "Package",
               "version": "[7.0.0, )"
@@ -81,11 +85,11 @@
               "target": "Package",
               "version": "[7.0.0, )"
             },
-            "Microsoft.Extensions.Logging.Console": {
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
               "version": "[7.0.0, )"
             },
-            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+            "Serilog.AspNetCore": {
               "target": "Package",
               "version": "[7.0.0, )"
             }

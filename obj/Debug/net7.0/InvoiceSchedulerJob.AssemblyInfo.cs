@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InvoiceSchedulerJob")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+55e88e208292048b6fe26d9ea651d12010dcfdcc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f004ecec46b8e16630cabb030201d673cf8c6199")]
 [assembly: System.Reflection.AssemblyProductAttribute("InvoiceSchedulerJob")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InvoiceSchedulerJob")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -115,6 +115,9 @@ public class InvoicePaymentService
         }
 
         await _notificationService.TryCreateInsufficientBalanceAsync(client, invoice, payment, amount, invoiceBalance, ct);
+        _logger.LogInformation(
+            "Недостаточно средств: PaymentId={PaymentId}, InvoiceId={InvoiceId}, ClientId={ClientId}, Required={Required}, Balance={Balance}",
+            payment.Id, invoice.Id, client.Id, amount, invoiceBalance);
     }
 
     /// <summary>
@@ -187,7 +190,9 @@ public class InvoicePaymentService
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
-            _logger.LogInformation("Автоплатёж выполнен: PaymentId={PaymentId}, InvoiceId={InvoiceId}, Amount={Amount}", payment.Id, invoice.Id, amount);
+            _logger.LogInformation(
+                "Автоплатёж выполнен: PaymentId={PaymentId}, InvoiceId={InvoiceId}, ClientId={ClientId}, OrgId={OrgId}, Amount={Amount}",
+                payment.Id, invoice.Id, client.Id, client.Organization, amount);
 
             try
             {
@@ -201,7 +206,8 @@ public class InvoicePaymentService
         catch (Exception ex)
         {
             await transaction.RollbackAsync(ct);
-            _logger.LogError(ex, "Ошибка автоплатежа {PaymentId}", payment.Id);
+            _logger.LogError(ex, "Ошибка автоплатежа PaymentId={PaymentId}, InvoiceId={InvoiceId}, ClientId={ClientId}",
+                payment.Id, invoice.Id, client.Id);
             throw;
         }
     }

@@ -109,7 +109,7 @@ public class SubscriptionService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Ошибка при проверке подписки организации {OrganizationId}", org.Id);
+                    _logger.LogError(ex, "Ошибка при проверке подписки OrgId={OrganizationId}", org.Id);
                 }
             }
         }
@@ -130,7 +130,9 @@ public class SubscriptionService
                 {
                     org.IsActive = false;
                     await _db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Организация {OrganizationId} ({Name}) деактивирована: подписка истекла", org.Id, org.Name);
+                    _logger.LogInformation(
+                        "Организация OrgId={OrganizationId} ({Name}) деактивирована: подписка истекла",
+                        org.Id, org.Name);
                 }
                 await _notificationService.TryCreateSubscriptionExpiredAsync(org, ct);
                 return;

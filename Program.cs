@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using InvoiceSchedulerJob.Models.DBModels;
 using InvoiceSchedulerJob.Services;
+using InvoiceSchedulerJob.Logging;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -13,12 +14,18 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
     .AddEnvironmentVariables();
 
+Log.Logger = SecoreLoggingBootstrap.Configure(
+        new LoggerConfiguration(),
+        builder.Configuration,
+        builder.Environment)
+    .CreateLogger();
+
+builder.Services.AddSerilog();
+builder.Services.Configure<SecoreLoggingOptions>(
+    builder.Configuration.GetSection(SecoreLoggingOptions.SectionName));
+
 var connectionString = builder.Configuration.GetSection("ConnectionStrings")["DefaultConnection"]
     ?? throw new InvalidOperationException("ConnectionString 'DefaultConnection' не найден.");
-
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddDebug();
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<NotificationService>();
@@ -31,18 +38,34 @@ var isTestRun = args.Contains("--test", StringComparer.OrdinalIgnoreCase)
 if (!isTestRun)
     builder.Services.AddHostedService<InvoiceSchedulerJob.InvoiceSchedulerService>();
 
-var host = builder.Build();
-var logger = host.Services.GetRequiredService<ILogger<Program>>();
+var logRoot = SecoreLoggingBootstrap.ResolveRootPath(builder.Configuration, builder.Environment);
+Log.Information("SECORE sheduler starting. Environment={Environment}, Logs={LogRoot}",
+    builder.Environment.EnvironmentName, logRoot);
 
-if (isTestRun)
+try
 {
-    logger.LogInformation("Режим теста: однократный запуск платежей и подписок...");
-    using var scope = host.Services.CreateScope();
-    await scope.ServiceProvider.GetRequiredService<InvoicePaymentService>().ProcessScheduledPaymentsAsync();
-    await scope.ServiceProvider.GetRequiredService<SubscriptionService>().ProcessSubscriptionChecksAsync();
-    logger.LogInformation("Тест завершён.");
-    return;
-}
+    var host = builder.Build();
 
-logger.LogInformation("InvoiceSchedulerJob запущен");
-await host.RunAsync();
+    if (isTestRun)
+    {
+        Log.Information("Режим теста: однократный запуск платежей и подписок...");
+        using var scope = host.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<InvoicePaymentService>().ProcessScheduledPaymentsAsync();
+        await scope.ServiceProvider.GetRequiredService<SubscriptionService>().ProcessSubscriptionChecksAsync();
+        Log.Information("Тест завершён.");
+        return;
+    }
+
+    Log.Information("InvoiceSchedulerJob запущен");
+    await host.RunAsync();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "SECORE sheduler terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.Information("SECORE sheduler stopping.");
+    Log.CloseAndFlush();
+}

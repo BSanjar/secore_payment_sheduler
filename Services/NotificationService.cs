@@ -95,7 +95,9 @@ public class NotificationService
         if (toAdd.Count == 0) return;
         _db.Notifications.AddRange(toAdd);
         await _db.SaveChangesAsync(ct);
-        _logger.LogInformation("Создано {Count} уведомлений типа {Type} для платежа {PaymentId}", toAdd.Count, notificationType, payment.Id);
+        _logger.LogInformation(
+            "Создано {Count} уведомлений типа {Type} для PaymentId={PaymentId}, InvoiceId={InvoiceId}, ClientId={ClientId}",
+            toAdd.Count, notificationType, payment.Id, invoice.Id, client.Id);
     }
 
     /// <summary>
@@ -133,7 +135,7 @@ public class NotificationService
         _db.Notifications.Add(n);
         await _db.SaveChangesAsync(ct);
         _logger.LogInformation(
-            "Создано уведомление типа {Type} для организации {OrganizationId} через канал {Channel}",
+            "Создано уведомление типа {Type} для OrgId={OrganizationId} через канал {Channel}",
             notificationType, organization.Id, channel);
     }
 
