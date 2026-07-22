@@ -59,6 +59,15 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // Only for design-time / scaffolding. Runtime uses DI + ConnectionStrings from config/env.
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseNpgsql("Host=localhost;Port=5433;Database=appdb;Username=appuser;Password=883448");
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Agent>(entity =>

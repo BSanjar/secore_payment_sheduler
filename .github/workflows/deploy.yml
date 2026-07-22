@@ -41,13 +41,20 @@ jobs:
         env:
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          # Host=app_postgres;Port=5432;Database=appdb;Username=...;Password=...
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: IMAGE_TAG,GITHUB_REF_NAME
+          envs: IMAGE_TAG,GITHUB_REF_NAME,DB_CONNECTION_STRING
           script: |
-            set -e
+            set -euo pipefail
+
+            if [ -z "${DB_CONNECTION_STRING:-}" ]; then
+              echo "❌ Secret DB_CONNECTION_STRING is empty. Add it in GitHub repo secrets."
+              exit 1
+            fi
 
             if [ "$GITHUB_REF_NAME" == "test" ]; then
               PORT=8071
@@ -57,26 +64,44 @@ jobs:
               PORT=8070
               CONTAINER=secore_PaymentSheduler_prod
               ENVIRONMENT=Production
+            else
+              echo "❌ Unknown branch: $GITHUB_REF_NAME"
+              exit 1
             fi
 
-            echo "🚀 Deploying '$GITHUB_REF_NAME' build on port $PORT ..."
-            echo "🧹 Cleaning up old containers and images..."
+            NETWORK=secore_net
+            POSTGRES_CONTAINER=app_postgres
 
-            docker stop $CONTAINER || true
-            docker rm $CONTAINER || true
+            echo "🚀 Deploying '$GITHUB_REF_NAME' build on port $PORT ..."
+
+            echo "🌐 Ensuring Docker network '$NETWORK'..."
+            docker network create "$NETWORK" 2>/dev/null || true
+
+            if docker ps -a --format '{{.Names}}' | grep -qx "$POSTGRES_CONTAINER"; then
+              echo "🔗 Connecting $POSTGRES_CONTAINER to $NETWORK..."
+              docker network connect "$NETWORK" "$POSTGRES_CONTAINER" 2>/dev/null || true
+            else
+              echo "⚠️ Container $POSTGRES_CONTAINER not found. App will start, but DB must be reachable as Host=app_postgres."
+            fi
+
+            echo "🧹 Cleaning up old containers and images..."
+            docker stop "$CONTAINER" || true
+            docker rm "$CONTAINER" || true
             docker image prune -af || true
 
             echo "⬇️ Pulling latest image: $IMAGE_TAG"
-            docker pull $IMAGE_TAG
+            docker pull "$IMAGE_TAG"
 
-            echo "🧩 Starting new container..."
+            echo "🧩 Starting $CONTAINER on network $NETWORK..."
             docker run -d \
-              --name $CONTAINER \
+              --name "$CONTAINER" \
               --restart always \
-              -p $PORT:80 \
-              -e ASPNETCORE_ENVIRONMENT=$ENVIRONMENT \
+              --network "$NETWORK" \
+              -p "$PORT:80" \
+              -e ASPNETCORE_ENVIRONMENT="$ENVIRONMENT" \
               -e ASPNETCORE_URLS=http://+:80 \
-              $IMAGE_TAG
+              -e "ConnectionStrings__DefaultConnection=$DB_CONNECTION_STRING" \
+              "$IMAGE_TAG"
 
             echo "✅ Deployment finished."
-            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Networks}}"
